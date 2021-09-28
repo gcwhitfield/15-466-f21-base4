@@ -159,6 +159,7 @@ COMMON_NAMES =
 	Mode
 	GL
 	Load
+	DrawText
 	;
 
 SHOW_MESHES_NAMES =

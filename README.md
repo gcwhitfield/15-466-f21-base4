@@ -14,7 +14,8 @@ How To Play:
 
 (TODO: describe the controls and (if needed) goals/strategy.)
 
-Sources: (TODO: list a source URL for any assets you did not create yourself. Make sure you have a license for the asset.)
+Sources: 
+Quicksilver font from https://www.dafont.com/quicksilver-3.font
 
 This game was built with [NEST](NEST.md).
 
