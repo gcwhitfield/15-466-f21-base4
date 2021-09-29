@@ -195,7 +195,11 @@ MainFromObjects show-scene : $(SHOW_SCENE_NAMES:S=$(SUFOBJ)) $(COMMON_NAMES:S=$(
 #------------------------
 #check that a program that uses harfbuzz + freetype functions links properly:
 LOCATE_TARGET = objs ;
-Objects freetype-test.cpp ;
+Objects 
+	$(GAME_NAMES:S=.cpp)
+	$(COMMON_NAMES:S=.cpp)
+	freetype-test.cpp 
+	;
 LOCATE_TARGET = dist ;
-MainFromObjects freetype-test : freetype-test$(SUFOBJ) ;
+MainFromObjects freetype-test : freetype-test$(SUFOBJ) $(COMMON_NAMES:S=$(SUFOBJ)) ;
 #------------------------

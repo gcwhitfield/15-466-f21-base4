@@ -2,11 +2,21 @@
 
 #include "Scene.hpp"
 #include "Sound.hpp"
+#include "DrawText.hpp"
+
+#include <ft2build.h>
+#include FT_FREETYPE_H
+
+#include <hb.h>
+#include <hb-ft.h>
 
 #include <glm/glm.hpp>
 
 #include <vector>
 #include <deque>
+
+#define FONT_SIZE 36
+#define MARGIN (FONT_SIZE * .5)
 
 struct PlayMode : Mode {
 	PlayMode();
