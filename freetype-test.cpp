@@ -28,6 +28,12 @@
 #include <algorithm>
 
 #include "shaders/shader.h"
+#include "DrawText.hpp"
+
+#include "ColorTextureProgram.hpp"
+
+//for the GL_ERRORS() macro:
+#include "gl_errors.hpp"
 
 #define WINDOW_HEIGHT 528
 #define WINDOW_WIDTH 1280
@@ -98,12 +104,184 @@ int main(int argc, char **argv) {
 		}
 	}
 
+	// ----- Harfbuzz and freetype -----
+	FT_Library ft;
+	if (FT_Init_FreeType(&ft))
+	{
+		std::cout << "ERROR::FREETYPE:: Could not init FreeType Library " << std::endl;
+		return -1;
+	}
+
+	FT_Face face;
+	if (FT_New_Face(ft, "fonts/quicksilver_3/Quicksilver.ttf", 0, &face))
+	{
+		std::cout << "ERROR::FREETYPE: Failed to load font" << std::endl;
+		return -1;
+	}
+
+	FT_Set_Pixel_Sizes(face, 0, 48);
+
+	/*
+	// Create hb-ft font
+	hb_font_t *hb_font;
+	hb_font = hb_ft_font_create(face, NULL);
+	
+	// Create hb_buffer and populate
+	hb_buffer_t *hb_buffer;
+	hb_buffer = hb_buffer_create();
+	hb_buffer_add_utf8(hb_buffer, text, -1, 0, -1 );
+	*/
+
+	// Font::Character c;
+	if (FT_Load_Char(face, 'X', FT_LOAD_RENDER))
+	{
+		std::cout << "ERROR::FREETYPE: Failed to load Glyph" << std::endl;
+		return -1;
+	}
+
+	// create a texture from the glyph
+	// unsigned int texture;
+	// {
+	// 	glGenTextures(1, &texture);
+	// 	glBindTexture(GL_TEXTURE_2D, texture);
+	// 	glTexImage2D(
+	// 		GL_TEXTURE_2D,
+	// 		0, 
+	// 		GL_RED,
+	// 		face->glyph->bitmap.width,
+	// 		face->glyph->bitmap.rows,
+	// 		0, 
+	// 		GL_RED,
+	// 		GL_UNSIGNED_BYTE,
+	// 		face->glyph->bitmap.buffer
+	// 	);
+
+	// 	glBindTexture(GL_TEXTURE_2D, 0);
+
+	// }
+
+	// make a dummy white texture 
+	GLuint texture;
+	{
+		// ask OpenGL to fill texture with the name of an unused texture object
+		glGenTextures(1, &texture);
+
+		// bind that texture object as a GL_TEXTURE_2D-type texture
+		glBindTexture(GL_TEXTURE_2D, texture);
+
+		// upload a 1x1 image of a solid white texture
+		glm::uvec2 size = glm::uvec2(1,1);
+		std::vector< glm::u8vec4 > data(size.x * size.y, glm::u8vec4(0xff, 0xff, 0xff, 0xff));
+		glTexImage2D(
+			GL_TEXTURE_2D,
+			0, 
+			GL_RGBA, 
+			size.y, 
+			size.y,
+			0, 
+			GL_RGBA, 
+			GL_UNSIGNED_BYTE, 
+			data.data()
+		);
+
+		glBindTexture(GL_TEXTURE_2D, 0);
+	}
+	
+
+	GL_ERRORS();
+	// ----- END harfbuzz and freetype -----
+
+	// The vertex class was copied from the NEST framework
+	// draw functions will work on vectors of vertices, defined as follows:
+	struct Vertex {
+		Vertex(glm::vec3 const &Position_, glm::u8vec4 const &Color_, glm::vec2 const &TexCoord_) :
+			Position(Position_), Color(Color_), TexCoord(TexCoord_) { }
+		glm::vec3 Position;
+		glm::u8vec4 Color;
+		glm::vec2 TexCoord;
+	};
+	std::vector < Vertex > vertices;
+
+	// Shader s("./shaders/text.vs", "./shaders/text.fs");
+
+	// inline helper functions for drawing shapes. The triangles are being counter clockwise.
+	// draw_rectangle copied from NEST framework
+	auto draw_rectangle = [] (std::vector<Vertex> &verts, glm::vec2 const &center, glm::vec2 const &radius, glm::u8vec4 const &color) {
+		verts.emplace_back(glm::vec3(center.x-radius.x, center.y-radius.y, 0.0f), color, glm::vec2(0.5f, 0.5f));
+		verts.emplace_back(glm::vec3(center.x+radius.x, center.y-radius.y, 0.0f), color, glm::vec2(0.5f, 0.5f));
+		verts.emplace_back(glm::vec3(center.x+radius.x, center.y+radius.y, 0.0f), color, glm::vec2(0.5f, 0.5f));
+
+		verts.emplace_back(glm::vec3(center.x-radius.x, center.y-radius.y, 0.0f), color, glm::vec2(0.5f, 0.5f));
+		verts.emplace_back(glm::vec3(center.x+radius.x, center.y+radius.y, 0.0f), color, glm::vec2(0.5f, 0.5f));
+		verts.emplace_back(glm::vec3(center.x-radius.x, center.y+radius.y, 0.0f), color, glm::vec2(0.5f, 0.5f));
+	};
+
+
+	GLuint vertex_buffer = 0;
+	GLuint vertex_buffer_for_color_texture_program = 0;
+	ColorTextureProgram color_texture_program;
+	{ // vertex buffer: [copied from nest framework]
+		glGenBuffers(1, &vertex_buffer);
+		// for now, buffer will be un-filled.
+
+		GL_ERRORS(); // PARANOIA: print out any OpenGL errors that may have happened
+	}
+	{ // vertex array mapping buffer for color_texture_program
+		// ask OpenGL to fill vertex_buffer_for_color_texture_program with the name of an unsused vertex array object
+		glGenVertexArrays(1, &vertex_buffer_for_color_texture_program);
+
+		// set the vertex_buffer_for_color_texture_program as the current vertex array object
+		glBindVertexArray(vertex_buffer_for_color_texture_program);
+
+		// set vertex_buffer as the source of glVertexAttribPointer() commands
+		glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
+
+		// set up the vertex array object to descrive arrays of Vertex
+		glVertexAttribPointer(
+			color_texture_program.Position_vec4,
+			3,
+			GL_FLOAT,
+			GL_FALSE,
+			sizeof(Vertex),
+			(GLbyte *) 0 + 0
+		);
+		glEnableVertexAttribArray(color_texture_program.Position_vec4);
+		// [Note that it is okay to bind a vec3 input to a vec4 attribute -- the w component will be filled with 1 automatically]
+
+		glVertexAttribPointer(
+			color_texture_program.Color_vec4, // attribute
+			4, //size
+			GL_UNSIGNED_BYTE, // type
+			GL_TRUE, // normalized
+			sizeof(Vertex), // stride
+			(GLbyte *)0 + 4*3 // offset
+		);
+		glEnableVertexAttribArray(color_texture_program.Color_vec4);
+
+		glVertexAttribPointer(
+			color_texture_program.TexCoord_vec2, // attribute
+			2, // size
+			GL_FLOAT, // type
+			GL_FALSE,
+			sizeof(Vertex),
+			(GLbyte *)0 + 4*3 + 4*1 // offset
+		);
+		glEnableVertexAttribArray(color_texture_program.TexCoord_vec2);
+
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+		glBindVertexArray(0);
+
+		GL_ERRORS();
+	}
+
+	GL_ERRORS();
 	//------------ main loop ------------
 	// copied from NEST framework
 	//this inline function will be called whenever the window is resized,
 	// and will update the window_size and drawable_size variables:
-	glm::uvec2 window_size; //size of window (layout pixels)
-	glm::uvec2 drawable_size; //size of drawable (physical pixels)
+	glm::uvec2 window_size(WINDOW_WIDTH, WINDOW_WIDTH); //size of window (layout pixels)
+	glm::uvec2 drawable_size(WINDOW_WIDTH, WINDOW_HEIGHT); //size of drawable (physical pixels)
 	//On non-highDPI displays, window_size will always equal drawable_size.
 	auto on_resize = [&](){
 		int w,h;
@@ -114,6 +292,9 @@ int main(int argc, char **argv) {
 		glViewport(0, 0, drawable_size.x, drawable_size.y);
 	};
 	on_resize();
+
+	GL_ERRORS();
+
 
 	//This will loop until the current mode is set to null:
 	bool activated = true;
@@ -162,8 +343,79 @@ int main(int argc, char **argv) {
 		
 			// draw
 			{
+				// // ----- copied from game 0 BEGIN -----
 
+				// compute window aspect ratio:
+				float aspect = WINDOW_WIDTH / (float)WINDOW_WIDTH;
+				// compute scale factor for court given that...
+				float scale = std::min(
+					(2.0f * aspect) / WINDOW_WIDTH, //... x must fit in [-aspect,aspect] ...
+					(2.0f) / WINDOW_HEIGHT //... y must fit in [-1,1].
+				);
+				glm::vec2 center = 0.5f * glm::vec2(WINDOW_WIDTH, WINDOW_WIDTH);
+				glm::mat3x2 clip_to_court(
+					glm::vec2(aspect / scale, 0.0f),
+					glm::vec2(0.0f, 1.0f / scale),
+					glm::vec2(center.x, center.y)
+				);
+				// build matrix that scales and translates appropriately:
+				glm::mat4 court_to_clip = glm::mat4(
+					glm::vec4(scale / aspect, 0.0f, 0.0f, 0.0f),
+					glm::vec4(0.0f, scale, 0.0f, 0.0f),
+					glm::vec4(0.0f, 0.0f, 1.0f, 0.0f),
+					glm::vec4(-center.x * (scale / aspect), -center.y * scale, 0.0f, 1.0f)
+				);
+
+				glm::u8vec4 bg_color(0, 0, 255, 255);
+
+				glClearColor(bg_color.r / 255.0f, bg_color.g / 255.0f, bg_color.g / 255.0f, bg_color.a / 255.0f);
+				glClear(GL_COLOR_BUFFER_BIT);
+
+				GL_ERRORS();
+				// use alpha blending
+				glEnable(GL_BLEND);
+				glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+				// dont use the depth test
+				glDisable(GL_DEPTH_TEST);
+
+				{ // manipulate the vertex array
+					draw_rectangle(vertices, glm::vec2(50, 50), glm::vec2(10, 20), glm::u8vec4(255, 255, 255, 255));
+				}
+
+				// upload vertices to the vertex buffer
+				// assert(vertices.size() > 0);
+				glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer); // set vertex_buffer as current
+				glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(vertices[0]), vertices.data(), GL_STREAM_DRAW); // upload vertices array
+				glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+				// set color_texture_program as current program:
+				glUseProgram(color_texture_program.program);
+
+				// upload OBJECT_TO_CLIP to the proper uniform location:
+				glUniformMatrix4fv(color_texture_program.OBJECT_TO_CLIP_mat4, 1, GL_FALSE, glm::value_ptr(court_to_clip));
+				
+				// use the mapping vertex_buffer_for_color_texture_program to fetch vertex data:
+				glBindVertexArray(vertex_buffer_for_color_texture_program);
+
+				// bind the solid white texture to location zero so things will be just drawn with their colors:
+				glActiveTexture(GL_TEXTURE0);
+				glBindTexture(GL_TEXTURE_2D, texture);
+
+				// run the OpenGL pipeline
+				glDrawArrays(GL_TRIANGLES, 0, GLsizei(vertices.size()));
+
+				// unbind the solid white texture
+				glBindTexture(GL_TEXTURE_2D, 0);
+
+				// reset the vertex array to none
+				glBindVertexArray(0);
+				
+				// reset the current program to none:
+				glUseProgram(0);
+				// // ----- copied from game 0 END -----
 			}
+
+			vertices.clear();
 		}
 
 		//Wait until the recently-drawn frame is shown before doing it all again:

@@ -196,10 +196,11 @@ MainFromObjects show-scene : $(SHOW_SCENE_NAMES:S=$(SUFOBJ)) $(COMMON_NAMES:S=$(
 #check that a program that uses harfbuzz + freetype functions links properly:
 LOCATE_TARGET = objs ;
 Objects 
+	ColorTextureProgram.cpp
 	$(GAME_NAMES:S=.cpp)
 	$(COMMON_NAMES:S=.cpp)
 	freetype-test.cpp 
 	;
 LOCATE_TARGET = dist ;
-MainFromObjects freetype-test : freetype-test$(SUFOBJ) $(COMMON_NAMES:S=$(SUFOBJ)) ;
+MainFromObjects freetype-test : freetype-test$(SUFOBJ) ColorTextureProgram$(SUFOBJ) $(COMMON_NAMES:S=$(SUFOBJ)) ;
 #------------------------
