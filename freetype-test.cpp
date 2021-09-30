@@ -105,6 +105,7 @@ int main(int argc, char **argv) {
 	}
 
 	// ----- Harfbuzz and freetype -----
+	// copied from https://github.com/harfbuzz/harfbuzz-tutorial/blob/master/hello-harfbuzz-freetype.c
 	FT_Library ft;
 	if (FT_Init_FreeType(&ft))
 	{
@@ -112,8 +113,10 @@ int main(int argc, char **argv) {
 		return -1;
 	}
 
+
+	char* fontFile = argv[1];
 	FT_Face face;
-	if (FT_New_Face(ft, "fonts/quicksilver_3/Quicksilver.ttf", 0, &face))
+	if (FT_New_Face(ft, fontFile, 0, &face))
 	{
 		std::cout << "ERROR::FREETYPE: Failed to load font" << std::endl;
 		return -1;
@@ -121,7 +124,8 @@ int main(int argc, char **argv) {
 
 	FT_Set_Pixel_Sizes(face, 0, 48);
 
-	/*
+	char* text = argv[2];
+
 	// Create hb-ft font
 	hb_font_t *hb_font;
 	hb_font = hb_ft_font_create(face, NULL);
@@ -130,7 +134,32 @@ int main(int argc, char **argv) {
 	hb_buffer_t *hb_buffer;
 	hb_buffer = hb_buffer_create();
 	hb_buffer_add_utf8(hb_buffer, text, -1, 0, -1 );
-	*/
+	hb_buffer_guess_segment_properties(hb_buffer);
+	
+	// shape it!
+	hb_shape(hb_font, hb_buffer, NULL, 0);
+
+	// get glyph information and positions out of the buffer
+	unsigned int len = hb_buffer_get_length(hb_buffer);
+	hb_glyph_info_t *info = hb_buffer_get_glyph_infos(hb_buffer, NULL);
+	hb_glyph_position_t *pos = hb_buffer_get_glyph_positions(hb_buffer, NULL);
+
+	// print out the contents as is
+	for (size_t i = 0; i < len; i++)
+	{
+		hb_codepoint_t gid = info[i].codepoint;
+		unsigned int cluster = info[i].cluster;
+		double x_advance = pos[i].x_advance / 64.;
+		double y_advance = pos[i].y_advance / 64.;
+		double x_offset = pos[i].x_offset / 64.;
+		double y_offset = pos[i].y_offset / 64.;
+
+		char glyphname[32];
+		hb_font_get_glyph_name (hb_font, gid, glyphname, sizeof(glyphname));
+
+		printf("glyph='%s' cluster=%d advance=(%g,%g) offset=(%g,%g)\n",
+		glyphname, cluster, x_advance, y_advance, x_offset, y_offset);
+	}
 
 	// Font::Character c;
 	if (FT_Load_Char(face, 'X', FT_LOAD_RENDER))
@@ -140,52 +169,52 @@ int main(int argc, char **argv) {
 	}
 
 	// create a texture from the glyph
-	// unsigned int texture;
-	// {
-	// 	glGenTextures(1, &texture);
-	// 	glBindTexture(GL_TEXTURE_2D, texture);
-	// 	glTexImage2D(
-	// 		GL_TEXTURE_2D,
-	// 		0, 
-	// 		GL_RED,
-	// 		face->glyph->bitmap.width,
-	// 		face->glyph->bitmap.rows,
-	// 		0, 
-	// 		GL_RED,
-	// 		GL_UNSIGNED_BYTE,
-	// 		face->glyph->bitmap.buffer
-	// 	);
-
-	// 	glBindTexture(GL_TEXTURE_2D, 0);
-
-	// }
-
-	// make a dummy white texture 
 	GLuint texture;
 	{
-		// ask OpenGL to fill texture with the name of an unused texture object
 		glGenTextures(1, &texture);
-
-		// bind that texture object as a GL_TEXTURE_2D-type texture
 		glBindTexture(GL_TEXTURE_2D, texture);
-
-		// upload a 1x1 image of a solid white texture
-		glm::uvec2 size = glm::uvec2(1,1);
-		std::vector< glm::u8vec4 > data(size.x * size.y, glm::u8vec4(0xff, 0xff, 0xff, 0xff));
 		glTexImage2D(
 			GL_TEXTURE_2D,
 			0, 
-			GL_RGBA, 
-			size.y, 
-			size.y,
+			GL_RED,
+			face->glyph->bitmap.width,
+			face->glyph->bitmap.rows,
 			0, 
-			GL_RGBA, 
-			GL_UNSIGNED_BYTE, 
-			data.data()
+			GL_RED,
+			GL_UNSIGNED_BYTE,
+			face->glyph->bitmap.buffer
 		);
 
 		glBindTexture(GL_TEXTURE_2D, 0);
+
 	}
+
+	// make a dummy white texture 
+	// GLuint texture;
+	// {
+	// 	// ask OpenGL to fill texture with the name of an unused texture object
+	// 	glGenTextures(1, &texture);
+
+	// 	// bind that texture object as a GL_TEXTURE_2D-type texture
+	// 	glBindTexture(GL_TEXTURE_2D, texture);
+
+	// 	// upload a 1x1 image of a solid white texture
+	// 	glm::uvec2 size = glm::uvec2(1,1);
+	// 	std::vector< glm::u8vec4 > data(size.x * size.y, glm::u8vec4(0xff, 0xff, 0xff, 0xff));
+	// 	glTexImage2D(
+	// 		GL_TEXTURE_2D,
+	// 		0, 
+	// 		GL_RGBA, 
+	// 		size.y, 
+	// 		size.y,
+	// 		0, 
+	// 		GL_RGBA, 
+	// 		GL_UNSIGNED_BYTE, 
+	// 		data.data()
+	// 	);
+
+	// 	glBindTexture(GL_TEXTURE_2D, 0);
+	// }
 	
 
 	GL_ERRORS();
@@ -366,7 +395,7 @@ int main(int argc, char **argv) {
 					glm::vec4(-center.x * (scale / aspect), -center.y * scale, 0.0f, 1.0f)
 				);
 
-				glm::u8vec4 bg_color(0, 0, 255, 255);
+				glm::u8vec4 bg_color(255, 255, 255, 255);
 
 				glClearColor(bg_color.r / 255.0f, bg_color.g / 255.0f, bg_color.g / 255.0f, bg_color.a / 255.0f);
 				glClear(GL_COLOR_BUFFER_BIT);
