@@ -64,7 +64,6 @@ int main(int argc, char **argv) {
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
 
-
 	//create window:
 	SDL_Window *window = SDL_CreateWindow(
 		"gp21 game4: choice-based game", //TODO: remember to set a title for your game!
@@ -105,6 +104,7 @@ int main(int argc, char **argv) {
 	}
 
 	// ----- Harfbuzz and freetype -----
+	// 1) Load font with Freetype
 	// copied from https://github.com/harfbuzz/harfbuzz-tutorial/blob/master/hello-harfbuzz-freetype.c
 	FT_Library ft;
 	if (FT_Init_FreeType(&ft))
@@ -112,7 +112,6 @@ int main(int argc, char **argv) {
 		std::cout << "ERROR::FREETYPE:: Could not init FreeType Library " << std::endl;
 		return -1;
 	}
-
 
 	char* fontFile = argv[1];
 	FT_Face face;
@@ -161,6 +160,7 @@ int main(int argc, char **argv) {
 		glyphname, cluster, x_advance, y_advance, x_offset, y_offset);
 	}
 
+	// 2) load character with FreeType
 	// Font::Character c;
 	if (FT_Load_Char(face, 'X', FT_LOAD_RENDER))
 	{
@@ -168,7 +168,7 @@ int main(int argc, char **argv) {
 		return -1;
 	}
 
-	// create a texture from the glyph
+	// 3) Create a texture from glyph (should be 'X')
 	GLuint texture;
 	{
 		glGenTextures(1, &texture);
@@ -186,7 +186,6 @@ int main(int argc, char **argv) {
 		);
 
 		glBindTexture(GL_TEXTURE_2D, 0);
-
 	}
 
 	// make a dummy white texture 
@@ -231,21 +230,19 @@ int main(int argc, char **argv) {
 	};
 	std::vector < Vertex > vertices;
 
-	// Shader s("./shaders/text.vs", "./shaders/text.fs");
-
 	// inline helper functions for drawing shapes. The triangles are being counter clockwise.
 	// draw_rectangle copied from NEST framework
 	auto draw_rectangle = [] (std::vector<Vertex> &verts, glm::vec2 const &center, glm::vec2 const &radius, glm::u8vec4 const &color) {
-		verts.emplace_back(glm::vec3(center.x-radius.x, center.y-radius.y, 0.0f), color, glm::vec2(0.5f, 0.5f));
-		verts.emplace_back(glm::vec3(center.x+radius.x, center.y-radius.y, 0.0f), color, glm::vec2(0.5f, 0.5f));
-		verts.emplace_back(glm::vec3(center.x+radius.x, center.y+radius.y, 0.0f), color, glm::vec2(0.5f, 0.5f));
+		verts.emplace_back(glm::vec3(center.x-radius.x, center.y-radius.y, 0.0f), color, glm::vec2(0.0f, 0.0f));
+		verts.emplace_back(glm::vec3(center.x+radius.x, center.y-radius.y, 0.0f), color, glm::vec2(1.0f, 0.0f));
+		verts.emplace_back(glm::vec3(center.x+radius.x, center.y+radius.y, 0.0f), color, glm::vec2(1.0f, 1.0f));
 
-		verts.emplace_back(glm::vec3(center.x-radius.x, center.y-radius.y, 0.0f), color, glm::vec2(0.5f, 0.5f));
-		verts.emplace_back(glm::vec3(center.x+radius.x, center.y+radius.y, 0.0f), color, glm::vec2(0.5f, 0.5f));
-		verts.emplace_back(glm::vec3(center.x-radius.x, center.y+radius.y, 0.0f), color, glm::vec2(0.5f, 0.5f));
+		verts.emplace_back(glm::vec3(center.x-radius.x, center.y-radius.y, 0.0f), color, glm::vec2(0.0f, 0.0f));
+		verts.emplace_back(glm::vec3(center.x+radius.x, center.y+radius.y, 0.0f), color, glm::vec2(1.0f, 1.0f));
+		verts.emplace_back(glm::vec3(center.x-radius.x, center.y+radius.y, 0.0f), color, glm::vec2(0.0f, 1.0f));
 	};
 
-
+	// 4) set up vertex array object and vertex buffer object
 	GLuint vertex_buffer = 0;
 	GLuint vertex_buffer_for_color_texture_program = 0;
 	ColorTextureProgram color_texture_program;
