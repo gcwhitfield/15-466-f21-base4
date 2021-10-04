@@ -171,11 +171,11 @@ MemoryGameMode::MemoryGameMode() {
 		}
 
 		// 3) Create a texture from glyph (should be 'X')
-		GLuint white_tex;
-		{
+		// GLuint white_tex;
+		
 			glGenTextures(1, &white_tex);
 			glBindTexture(GL_TEXTURE_2D, white_tex);
-			glm::uvec2 size = glm::uvec2(face->glyph->bitmap.width,face->glyph->bitmap.rows);
+			glm::uvec2 size = glm::uvec2(face->glyph->bitmap.rows,face->glyph->bitmap.width);
 			std::vector< glm::u8vec4 > data(size.x*size.y, glm::u8vec4(0xff, 0xff, 0xff, 0xff));
 			for (size_t i = 0; i < size.y; i++)
 			{
@@ -195,8 +195,8 @@ MemoryGameMode::MemoryGameMode() {
 				GL_TEXTURE_2D,
 				0, 
 				GL_RGBA,
-				face->glyph->bitmap.width,
-				face->glyph->bitmap.rows,
+				size.x,
+				size.y,
 				0, 
 				GL_RGBA,
 				GL_UNSIGNED_BYTE,
@@ -227,9 +227,9 @@ MemoryGameMode::MemoryGameMode() {
 		// 	}
 
 		// 	// glBindTexture(GL_TEXTURE_2D, 0);
-		} 
+		
 
-		// // // ask OpenGL to fill white_tex with the name of an unused texture object:
+		// // ask OpenGL to fill white_tex with the name of an unused texture object:
 		// glGenTextures(1, &white_tex);
 
 		// // // bind that texture object as a GL_TEXTURE_2D-type texture:
@@ -506,6 +506,7 @@ void MemoryGameMode::draw(glm::uvec2 const &drawable_size) {
 	glBindVertexArray(vertex_buffer_for_color_texture_program);
 
 	// bind the solid white texture to location zero so things will be drawn just with their colors:
+	// if you want to use more than 1 testure, use glUniform1i
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, white_tex);
 
