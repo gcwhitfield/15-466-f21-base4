@@ -3,6 +3,7 @@
 #include "Scene.hpp"
 #include "Sound.hpp"
 #include "DrawText.hpp"
+#include "ColorTextureProgram.hpp"
 
 #include <ft2build.h>
 #include FT_FREETYPE_H
@@ -38,6 +39,10 @@ struct PlayMode : Mode {
 	//local copy of the game scene (so code can change it during gameplay):
 	Scene scene;
 
+	ColorTextureProgram font_program;
+	GLuint font_vertex_attributes;
+	GLuint font_vertex_buffer;
+	GLuint white_tex;
 	//hexapod leg to wobble:
 	Scene::Transform *hip = nullptr;
 	Scene::Transform *upper_leg = nullptr;

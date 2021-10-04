@@ -64,8 +64,192 @@ PlayMode::PlayMode() : scene(*hexapod_scene) {
 	leg_tip_loop = Sound::loop_3D(*dusty_floor_sample, 1.0f, get_leg_tip_position(), 10.0f);
 
 	//font initialization
-	quicksilverFont.initialize(quicksilverFontFile);
-	// quicksilverText = DrawText(quicksilverFont);
+	{
+		{ // vertex buffer:
+			glGenBuffers(1, &font_vertex_buffer);
+			// for now, buffer will be un-filled.
+
+			GL_ERRORS(); // PARANOIA: print out any OpenGL errors that may have happened
+		}
+
+		{ // vertex array mapping buffer for font_program:
+			// ask OpenGL to fill font_vertex_attributes with the name of an unused vertex array object:
+			glGenVertexArrays(1, &font_vertex_attributes);
+
+			// set font_vertex_attributes as the current vertex array object:
+			glBindVertexArray(font_vertex_attributes);
+
+			// set font_vertex_buffer as the source of glVertexAttribPointer() commands:
+			glBindBuffer(GL_ARRAY_BUFFER, font_vertex_buffer);
+
+			// set up the vertex array object to describe arrays of MemoryGameMode::Vertex:
+			glVertexAttribPointer(
+				font_program.Position_vec4, // attribute
+				3, // size
+				GL_FLOAT, // type
+				GL_FALSE, // normalized
+				sizeof(Vertex), // stride
+				(GLbyte *)0 + 0 // offset
+			);
+			glEnableVertexAttribArray(font_program.Position_vec4);
+			// [Note that it is okay to bind a vec3 input to a vec4 attribute -- the w component will be filled with 1.0 automatically]
+
+			glVertexAttribPointer(
+				font_program.Color_vec4, // attribute
+				4, // size
+				GL_UNSIGNED_BYTE, // type
+				GL_TRUE, // normalized
+				sizeof(Vertex), // stride
+				(GLbyte *)0 + 4*3 // offset
+			);
+			glEnableVertexAttribArray(font_program.Color_vec4);
+
+			glVertexAttribPointer(
+				font_program.TexCoord_vec2, // attribute
+				2, // size
+				GL_FLOAT, // type
+				GL_FALSE, // normalized
+				sizeof(Vertex), // stride
+				(GLbyte *)0 + 4*3 + 4*1 // offset
+			);
+			glEnableVertexAttribArray(font_program.TexCoord_vec2);
+
+			// done referring to font_vertex_buffer, so unbind it:
+			glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+			// done setting up vertex array object, so unbind it:
+			glBindVertexArray(0);
+
+			GL_ERRORS(); // PARANOIA: print out any OpenGL errors that may have happened
+		}
+
+		// quicksilverFont.initialize(quicksilverFontFile);
+		// quicksilverText = DrawText(
+		// 	quicksilverFontFile,
+		// 	font_program.program,
+		// 	font_vertex_attributes,
+		// 	font_vertex_buffer
+		// );
+
+		{ // make a texture from FreeType
+
+		// 1) Load font with Freetype
+		// copied from https://github.com/harfbuzz/harfbuzz-tutorial/blob/master/hello-harfbuzz-freetype.c
+		FT_Library ft;
+		if (FT_Init_FreeType(&ft))
+		{
+			std::cout << "ERROR::FREETYPE:: Could not init FreeType Library " << std::endl;
+			exit(0);
+		}
+
+		const char* fontFile = &"fonts/quicksilver_3/Quicksilver.ttf"[0];
+		FT_Face face;
+		if (FT_New_Face(ft, fontFile, 0, &face))
+		{
+			std::cout << "ERROR::FREETYPE: Failed to load font" << std::endl;
+			exit(0);
+		}
+
+		// disable alignment since what we read from the face (font) is grey-scale. 
+		// this line was copied from https://github.com/ChunanGang/TextBasedGame/blob/main/TextRenderer.cpp
+    	glPixelStorei(GL_UNPACK_ALIGNMENT, 1); 
+
+		FT_Set_Pixel_Sizes(face, 0, 48);
+
+		const char* text = &"Hello!"[0];
+
+		// Create hb-ft font
+		hb_font_t *hb_font;
+		hb_font = hb_ft_font_create(face, NULL);
+		
+		// Create hb_buffer and populate
+		hb_buffer_t *hb_buffer;
+		hb_buffer = hb_buffer_create();
+		hb_buffer_add_utf8(hb_buffer, text, -1, 0, -1 );
+		hb_buffer_guess_segment_properties(hb_buffer);
+		
+		// shape it!
+		hb_shape(hb_font, hb_buffer, NULL, 0);
+
+		// get glyph information and positions out of the buffer
+		unsigned int len = hb_buffer_get_length(hb_buffer);
+		hb_glyph_info_t *info = hb_buffer_get_glyph_infos(hb_buffer, NULL);
+		hb_glyph_position_t *pos = hb_buffer_get_glyph_positions(hb_buffer, NULL);
+
+		// print out the contents as is
+		for (size_t i = 0; i < len; i++)
+		{
+			hb_codepoint_t gid = info[i].codepoint;
+			unsigned int cluster = info[i].cluster;
+			double x_advance = pos[i].x_advance / 64.;
+			double y_advance = pos[i].y_advance / 64.;
+			double x_offset = pos[i].x_offset / 64.;
+			double y_offset = pos[i].y_offset / 64.;
+
+			char glyphname[32];
+			hb_font_get_glyph_name (hb_font, gid, glyphname, sizeof(glyphname));
+
+			printf("glyph='%s' cluster=%d advance=(%g,%g) offset=(%g,%g)\n",
+			glyphname, cluster, x_advance, y_advance, x_offset, y_offset);
+		}
+
+		// 2) load character with FreeType
+		// Font::Character c;
+		if (FT_Load_Char(face, 'X', FT_LOAD_RENDER))
+		{
+			std::cout << "ERROR::FREETYPE: Failed to load Glyph" << std::endl;
+			exit(0);
+		}
+
+		// 3) Create a texture from glyph (should be 'X')
+		
+			glGenTextures(1, &white_tex);
+			glBindTexture(GL_TEXTURE_2D, white_tex);
+			glm::uvec2 size = glm::uvec2(face->glyph->bitmap.rows,face->glyph->bitmap.width);
+			std::vector< glm::u8vec4 > data(size.x*size.y, glm::u8vec4(0xff, 0xff, 0xff, 0xff));
+			for (size_t i = 0; i < size.y; i++)
+			{
+				for (size_t j = 0; j < size.x; j++)
+				{
+					size_t index = i * size.y + j;
+					uint8_t val = face->glyph->bitmap.buffer[j * std::abs(face->glyph->bitmap.pitch) + i]; // copied from professor mccan's example code for printing bitmap buffer
+					(void) val;
+				
+					data[index].x = val;
+					data[index].y = val;
+					data[index].z = val;
+					data[index].w = val;
+				}
+			}
+			glTexImage2D(
+				GL_TEXTURE_2D,
+				0, 
+				GL_RGBA,
+				size.x,
+				size.y,
+				0, 
+				GL_RGBA,
+				GL_UNSIGNED_BYTE,
+				data.data()
+			);
+
+		// set filtering and wrapping parameters:
+		// (it's a bit silly to mipmap a 1x1 texture, but I'm doing it because you may want to use this code to load different sizes of texture)
+		// parameters copied form https://github.com/ChunanGang/TextBasedGame/blob/main/TextRenderer.cpp
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+		// since texture uses a mipmap and we haven't uploaded one, instruct opengl to make one for us:
+		glGenerateMipmap(GL_TEXTURE_2D);
+
+		// Okay, texture uploaded, can unbind it:
+		glBindTexture(GL_TEXTURE_2D, 0);
+
+		GL_ERRORS(); // PARANOIA: print out any OpenGL errors that may have happened
+	}
+	}
 }
 
 PlayMode::~PlayMode() {
@@ -211,7 +395,65 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 	scene.draw(*camera);
 
 	{ // draw text
-		
+
+		// compute window aspect ratio:
+		float aspect = drawable_size.x / float(drawable_size.y);
+		// we'll scale the x coordinate by 1.0 / aspect to make sure things stay square.
+
+		glm::vec2 center = drawable_size;
+		center.x *= 0.5;
+		center.y *= 0.5;
+
+
+		// build matrix that scales and translates appropriately:
+		glm::mat4 court_to_clip = glm::mat4(
+			glm::vec4(aspect, 0.0f, 0.0f, 0.0f),
+			glm::vec4(0.0f, aspect, 0.0f, 0.0f),
+			glm::vec4(0.0f, 0.0f, 1.0f, 0.0f),
+			glm::vec4(-center.x * aspect, -center.y * aspect, 0.0f, 1.0f)
+		);
+
+		// set color_texture_program as current program:
+		glUseProgram(font_program.program);
+
+		// upload OBJECT_TO_CLIP to the proper uniform location:
+		glUniformMatrix4fv(font_program.OBJECT_TO_CLIP_mat4, 1, GL_FALSE, glm::value_ptr(court_to_clip));
+
+		// use the mapping font_vertex_attributes to fetch vertex data:
+		glBindVertexArray(font_vertex_attributes);
+
+		// DrawText.draw_text calls glDrawArrays
+		// quicksilverText.draw_text(
+		// 	"Hooga booga",
+		// 	glm::ivec2(50, 50),
+		// 	glm::vec2(1, 1),
+		// 	glm::u8vec4(0x24, 0x24, 0x24, 0xff),
+		// 	glm::vec2(50, 50)
+		// );
+
+		std::vector <Vertex> vertices;
+		draw_rectangle(vertices, glm::vec2(50, 50), glm::vec2(50, 50), glm::u8vec4(0x22, 0x33, 0x44, 0xff));
+
+		glBindBuffer(GL_ARRAY_BUFFER, font_vertex_buffer); // set font_vertex_buffer as current
+		glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(vertices[0]), vertices.data(), GL_DYNAMIC_DRAW); // upload vertices array
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+		// bind the solid white texture to location zero so things will be drawn just with their colors:
+		// if you want to use more than 1 testure, use glUniform1i
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, white_tex);
+
+		// run the OpenGL pipeline:
+		glDrawArrays(GL_TRIANGLES, 0, GLsizei(vertices.size()));
+
+		// unbind the solid white texture:
+		glBindTexture(GL_TEXTURE_2D, 0);
+
+		// reset vertex array to none:
+		glBindVertexArray(0);
+
+		// reset current program to none:
+		glUseProgram(0);
 	}
 
 	// {	// try to draw some text using Harfbuzz and FreeType

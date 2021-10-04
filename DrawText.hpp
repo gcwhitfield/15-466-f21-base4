@@ -59,13 +59,37 @@ class Font
 
 class DrawText
 {
-		public:
+	public:
 		DrawText() {};
-		DrawText(Font &font_) {font = font_;};
+		// DrawText(Font &font_) {font = font_;};
+		DrawText(
+			std::string fontFileName, 
+			GLuint program,
+			GLuint vertex_attribtues,
+			GLuint vertex_buffer
+		);
 		~DrawText() {};
 
+		GLuint program;
+		GLuint vertex_attributes;
+		GLuint vertex_buffer;
+		
 		Font font;
 		FT_Face face;
+
+		GLuint tex;
+
+		// the Character struct and the characters map were copied from the 
+		// OpenGL documentation about text rendering: 
+		// https://learnopengl.com/In-Practice/Text-Rendering
+		struct Character {
+			unsigned int TextureID;  // ID handle of the glyph texture
+			glm::ivec2   Size;       // Size of glyph
+			glm::ivec2   Bearing;    // Offset from baseline to left/top of glyph
+			unsigned int Advance;    // Offset to advance to next glyph
+		};
+
+		std::map<char, Character> characters;
 
 		std::string text_to_display;
 		/*
@@ -85,9 +109,10 @@ class DrawText
 
 	private:
 		hb_buffer_t *hb_buffer;
+		hb_font_t *hb_font;
 		hb_glyph_position_t *pos;
 		hb_glyph_info_t *info;
 		std::vector<Vertex> vertices;
 
-		void updateTextData();
+		//void updateTextData();
 };
