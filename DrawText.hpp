@@ -53,16 +53,16 @@ class Font
 
 		std::map<char, Character> characters;
 
-	private:
-		FT_Library ft;
 		FT_Face face;
+	
 };
 
 class DrawText
 {
 		public:
-		DrawText(Font &font);
-		~DrawText();
+		DrawText() {};
+		DrawText(Font &font_) {font = font_;};
+		~DrawText() {};
 
 		Font font;
 		FT_Face face;
@@ -84,5 +84,10 @@ class DrawText
 			glm::u8vec4 const &color, glm::vec2 txt_size);
 
 	private:
+		hb_buffer_t *hb_buffer;
+		hb_glyph_position_t *pos;
+		hb_glyph_info_t *info;
 		std::vector<Vertex> vertices;
+
+		void updateTextData();
 };

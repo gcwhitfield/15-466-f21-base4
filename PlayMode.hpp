@@ -55,4 +55,9 @@ struct PlayMode : Mode {
 	//camera:
 	Scene::Camera *camera = nullptr;
 
+	//text rendering
+	std::string quicksilverFontFile = "fonts/quicksilver_3/Quicksilver.ttf";
+	Font quicksilverFont;
+	DrawText quicksilverText;
+
 };
