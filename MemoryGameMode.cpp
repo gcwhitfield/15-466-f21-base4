@@ -175,60 +175,97 @@ MemoryGameMode::MemoryGameMode() {
 		{
 			glGenTextures(1, &white_tex);
 			glBindTexture(GL_TEXTURE_2D, white_tex);
+			glm::uvec2 size = glm::uvec2(face->glyph->bitmap.width,face->glyph->bitmap.rows);
+			std::vector< glm::u8vec4 > data(size.x*size.y, glm::u8vec4(0xff, 0xff, 0xff, 0xff));
+			for (size_t i = 0; i < size.y; i++)
+			{
+				for (size_t j = 0; j < size.x; j++)
+				{
+					size_t index = i * size.y + j;
+					uint8_t val = face->glyph->bitmap.buffer[j * std::abs(face->glyph->bitmap.pitch) + i]; // copied from professor mccan's example code for printing bitmap buffer
+					(void) val;
+				
+					data[index].x = val;
+					data[index].y = val;
+					data[index].z = val;
+					data[index].w = val;
+				}
+			}
 			glTexImage2D(
 				GL_TEXTURE_2D,
 				0, 
-				GL_RED,
+				GL_RGBA,
 				face->glyph->bitmap.width,
 				face->glyph->bitmap.rows,
 				0, 
-				GL_RED,
+				GL_RGBA,
 				GL_UNSIGNED_BYTE,
-				face->glyph->bitmap.buffer
+				//face->glyph->bitmap.buffer
+				data.data()
 			);
 
-			{
-				FT_Bitmap const &bitmap = face->glyph->bitmap;
+		// 	{
+		// 		FT_Bitmap const &bitmap = face->glyph->bitmap;
 
-				std::cout << "Bitmap (" << bitmap.width << "x" << bitmap.rows << "):\n";
-				std::cout << "  pitch is " << bitmap.pitch << "\n";
-				std::cout << "  pixel_mode is " << int32_t(bitmap.pixel_mode) << "; num_grays is " << bitmap.num_grays << "\n";
-				if (bitmap.pixel_mode == FT_PIXEL_MODE_GRAY && bitmap.num_grays == 256 && bitmap.pitch >= 0) {
-					for (uint32_t row = 0; row < bitmap.rows; ++row) {
-						std::cout << "   ";
-						for (uint32_t col = 0; col < bitmap.width; ++col) {
-							uint8_t val = bitmap.buffer[row * std::abs(bitmap.pitch) + col];
-							if (val < 128) std::cout << '.';
-							else std::cout << '#';
-						}
-						std::cout << '\n';
-					}
-				} else {
-					std::cout << "  (bitmap is not FT_PIXEL_MODE_GRAY with 256 levels and upper-left origin, not dumping)" << "\n";
-				}
-				std::cout.flush();
-			}
+		// 		std::cout << "Bitmap (" << bitmap.width << "x" << bitmap.rows << "):\n";
+		// 		std::cout << "  pitch is " << bitmap.pitch << "\n";
+		// 		std::cout << "  pixel_mode is " << int32_t(bitmap.pixel_mode) << "; num_grays is " << bitmap.num_grays << "\n";
+		// 		if (bitmap.pixel_mode == FT_PIXEL_MODE_GRAY && bitmap.num_grays == 256 && bitmap.pitch >= 0) {
+		// 			for (uint32_t row = 0; row < bitmap.rows; ++row) {
+		// 				std::cout << "   ";
+		// 				for (uint32_t col = 0; col < bitmap.width; ++col) {
+		// 					uint8_t val = bitmap.buffer[row * std::abs(bitmap.pitch) + col];
+		// 					if (val < 128) std::cout << '.';
+		// 					else std::cout << '#';
+		// 				}
+		// 				std::cout << '\n';
+		// 			}
+		// 		} else {
+		// 			std::cout << "  (bitmap is not FT_PIXEL_MODE_GRAY with 256 levels and upper-left origin, not dumping)" << "\n";
+		// 		}
+		// 		std::cout.flush();
+		// 	}
 
-			glBindTexture(GL_TEXTURE_2D, 0);
+		// 	// glBindTexture(GL_TEXTURE_2D, 0);
 		} 
 
-		// // ask OpenGL to fill white_tex with the name of an unused texture object:
+		// // // ask OpenGL to fill white_tex with the name of an unused texture object:
 		// glGenTextures(1, &white_tex);
 
-		// // bind that texture object as a GL_TEXTURE_2D-type texture:
+		// // // bind that texture object as a GL_TEXTURE_2D-type texture:
 		// glBindTexture(GL_TEXTURE_2D, white_tex);
 
 		// // upload a 1x1 image of solid white to the texture:
-		// glm::uvec2 size = glm::uvec2(1,1);
+		// glm::uvec2 size = glm::uvec2(face->glyph->bitmap.rows, face->glyph->bitmap.width);
+		// // glm::u8vec4 start_color(0x00, 0x00, 0x00, 0x00);
+		// // glm::u8vec4 end_color(0xff, 0xff, 0xff, 0xff);
 		// std::vector< glm::u8vec4 > data(size.x*size.y, glm::u8vec4(0xff, 0xff, 0xff, 0xff));
+		// for (int i = 0; i < size.y; i++)
+		// {
+		// 	for (int j = 0; j < size.x; j++)
+		// 	{
+		// 		int index = i * size.y + j;
+		// 		// float t =  sqrt(pow((i / (float)size.y), 2) + pow((j / (float)size.x), 2)) / sqrt(2);
+		// 		// data[index].x = start_color.x * t + end_color.x * (t - (float)1); 
+		// 		// data[index].y = start_color.y * t + end_color.y * (t - (float)1); 
+		// 		// data[index].z = start_color.z * t + end_color.z * (t - (float)1); 
+		// 		// data[index].w = start_color.w * t + end_color.w * (t - (float)1); 
+		// 		uint8_t val = face->glyph->bitmap.buffer[j * std::abs(face->glyph->bitmap.pitch) + i]; // copied from professor mccan's example code for printing bitmap buffer
+		// 		data[index].x =val; 
+		// 		data[index].y =val; 
+		// 		data[index].z =val; 
+		// 		data[index].w =val; 
+		// 	}
+		// }
 		// glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, size.x, size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, data.data());
 
 		// set filtering and wrapping parameters:
 		// (it's a bit silly to mipmap a 1x1 texture, but I'm doing it because you may want to use this code to load different sizes of texture)
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+		// parameters copied form https://github.com/ChunanGang/TextBasedGame/blob/main/TextRenderer.cpp
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 		// since texture uses a mipmap and we haven't uploaded one, instruct opengl to make one for us:
 		glGenerateMipmap(GL_TEXTURE_2D);
@@ -456,7 +493,7 @@ void MemoryGameMode::draw(glm::uvec2 const &drawable_size) {
 
 	// upload vertices to vertex_buffer:
 	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer); // set vertex_buffer as current
-	glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(vertices[0]), vertices.data(), GL_STREAM_DRAW); // upload vertices array
+	glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(vertices[0]), vertices.data(), GL_DYNAMIC_DRAW); // upload vertices array
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 	// set color_texture_program as current program:
