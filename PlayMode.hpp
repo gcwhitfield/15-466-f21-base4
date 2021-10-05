@@ -42,7 +42,7 @@ struct PlayMode : Mode {
 	ColorTextureProgram font_program;
 	GLuint font_vertex_attributes;
 	GLuint font_vertex_buffer;
-	GLuint white_tex;
+	GLuint white_tex = 0;
 	//hexapod leg to wobble:
 	Scene::Transform *hip = nullptr;
 	Scene::Transform *upper_leg = nullptr;

@@ -202,36 +202,62 @@ PlayMode::PlayMode() : scene(*hexapod_scene) {
 		}
 
 		// 3) Create a texture from glyph (should be 'X')
-		
-			glGenTextures(1, &white_tex);
-			glBindTexture(GL_TEXTURE_2D, white_tex);
-			glm::uvec2 size = glm::uvec2(face->glyph->bitmap.rows,face->glyph->bitmap.width);
-			std::vector< glm::u8vec4 > data(size.x*size.y, glm::u8vec4(0xff, 0xff, 0xff, 0xff));
-			for (size_t i = 0; i < size.y; i++)
+		// glGenTextures(1, &white_tex);
+		// glBindTexture(GL_TEXTURE_2D, white_tex);
+		// glm::uvec2 size = glm::uvec2(face->glyph->bitmap.rows,face->glyph->bitmap.width);
+		// std::vector< glm::u8vec4 > data(size.x*size.y, glm::u8vec4(0xff, 0xff, 0xff, 0xff));
+		// for (size_t i = 0; i < size.y; i++)
+		// {
+		// 	for (size_t j = 0; j < size.x; j++)
+		// 	{
+		// 		size_t index = i * size.y + j;
+		// 		uint8_t val = face->glyph->bitmap.buffer[j * std::abs(face->glyph->bitmap.pitch) + i]; // copied from professor mccan's example code for printing bitmap buffer
+		// 		(void) val;
+			
+		// 		data[index].x = val;
+		// 		data[index].y = val;
+		// 		data[index].z = val;
+		// 		data[index].w = val;
+		// 	}
+		// }
+		// glTexImage2D(
+		// 	GL_TEXTURE_2D,
+		// 	0, 
+		// 	GL_RGBA,
+		// 	size.x,
+		// 	size.y,
+		// 	0, 
+		// 	GL_RGBA,
+		// 	GL_UNSIGNED_BYTE,
+		// 	data.data()
+		// );
+
+		glGenTextures(1, &white_tex);
+		glBindTexture(GL_TEXTURE_2D, white_tex);
+		// upload a 1x1 image of solid white to the texture:
+		glm::uvec2 size = glm::uvec2(face->glyph->bitmap.rows, face->glyph->bitmap.width);
+		glm::u8vec4 start_color(0x00, 0x00, 0x00, 0x00);
+		glm::u8vec4 end_color(0xff, 0xff, 0xff, 0xff);
+		std::vector< glm::u8vec4 > data(size.x*size.y, glm::u8vec4(0xff, 0xff, 0xff, 0xff));
+		for (int i = 0; i < size.y; i++)
+		{
+			for (int j = 0; j < size.x; j++)
 			{
-				for (size_t j = 0; j < size.x; j++)
-				{
-					size_t index = i * size.y + j;
-					uint8_t val = face->glyph->bitmap.buffer[j * std::abs(face->glyph->bitmap.pitch) + i]; // copied from professor mccan's example code for printing bitmap buffer
-					(void) val;
-				
-					data[index].x = val;
-					data[index].y = val;
-					data[index].z = val;
-					data[index].w = val;
-				}
+				int index = i * size.y + j;
+				float t =  sqrt(pow((i / (float)size.y), 2) + pow((j / (float)size.x), 2)) / sqrt(2);
+				data[index].x = start_color.x * t + end_color.x * (t - (float)1); 
+				data[index].y = start_color.y * t + end_color.y * (t - (float)1); 
+				data[index].z = start_color.z * t + end_color.z * (t - (float)1); 
+				data[index].w = start_color.w * t + end_color.w * (t - (float)1); 
+				// uint8_t val = face->glyph->bitmap.buffer[j * std::abs(face->glyph->bitmap.pitch) + i]; // copied from professor mccan's example code for printing bitmap buffer
+				// data[index].x =val; 
+				// data[index].y =val; 
+				// data[index].z =val; 
+				// data[index].w =val; 
 			}
-			glTexImage2D(
-				GL_TEXTURE_2D,
-				0, 
-				GL_RGBA,
-				size.x,
-				size.y,
-				0, 
-				GL_RGBA,
-				GL_UNSIGNED_BYTE,
-				data.data()
-			);
+		}
+		
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, size.x, size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, data.data());
 
 		// set filtering and wrapping parameters:
 		// (it's a bit silly to mipmap a 1x1 texture, but I'm doing it because you may want to use this code to load different sizes of texture)
@@ -375,24 +401,30 @@ void PlayMode::update(float elapsed) {
 
 void PlayMode::draw(glm::uvec2 const &drawable_size) {
 	//update camera aspect ratio for drawable:
-	camera->aspect = float(drawable_size.x) / float(drawable_size.y);
+	// camera->aspect = float(drawable_size.x) / float(drawable_size.y);
 
-	//set up light type and position for lit_color_texture_program:
-	// TODO: consider using the Light(s) in the scene to do this
-	glUseProgram(lit_color_texture_program->program);
-	glUniform1i(lit_color_texture_program->LIGHT_TYPE_int, 1);
-	glUniform3fv(lit_color_texture_program->LIGHT_DIRECTION_vec3, 1, glm::value_ptr(glm::vec3(0.0f, 0.0f,-1.0f)));
-	glUniform3fv(lit_color_texture_program->LIGHT_ENERGY_vec3, 1, glm::value_ptr(glm::vec3(1.0f, 1.0f, 0.95f)));
-	glUseProgram(0);
+	// //set up light type and position for lit_color_texture_program:
+	// // TODO: consider using the Light(s) in the scene to do this
+	// glUseProgram(lit_color_texture_program->program);
+	// glUniform1i(lit_color_texture_program->LIGHT_TYPE_int, 1);
+	// glUniform3fv(lit_color_texture_program->LIGHT_DIRECTION_vec3, 1, glm::value_ptr(glm::vec3(0.0f, 0.0f,-1.0f)));
+	// glUniform3fv(lit_color_texture_program->LIGHT_ENERGY_vec3, 1, glm::value_ptr(glm::vec3(1.0f, 1.0f, 0.95f)));
+	// glUseProgram(0);
 
-	glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
-	glClearDepth(1.0f); //1.0 is actually the default value to clear the depth buffer to, but FYI you can change it.
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	// glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
+	// glClearDepth(1.0f); //1.0 is actually the default value to clear the depth buffer to, but FYI you can change it.
+	// glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	glEnable(GL_DEPTH_TEST);
-	glDepthFunc(GL_LESS); //this is the default depth comparison function, but FYI you can change it.
+	// glEnable(GL_DEPTH_TEST);
+	// glDepthFunc(GL_LESS); //this is the default depth comparison function, but FYI you can change it.
 
-	scene.draw(*camera);
+	// scene.draw(*camera);
+
+	// use alpha blending:
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	// don't use the depth test:
+	glDisable(GL_DEPTH_TEST);
 
 	{ // draw text
 
@@ -404,7 +436,6 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 		center.x *= 0.5;
 		center.y *= 0.5;
 
-
 		// build matrix that scales and translates appropriately:
 		glm::mat4 court_to_clip = glm::mat4(
 			glm::vec4(aspect, 0.0f, 0.0f, 0.0f),
@@ -413,14 +444,9 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 			glm::vec4(-center.x * aspect, -center.y * aspect, 0.0f, 1.0f)
 		);
 
-		// set color_texture_program as current program:
-		glUseProgram(font_program.program);
-
-		// upload OBJECT_TO_CLIP to the proper uniform location:
-		glUniformMatrix4fv(font_program.OBJECT_TO_CLIP_mat4, 1, GL_FALSE, glm::value_ptr(court_to_clip));
-
-		// use the mapping font_vertex_attributes to fetch vertex data:
-		glBindVertexArray(font_vertex_attributes);
+		std::vector <Vertex> vertices;
+		vertices.clear();
+		draw_rectangle(vertices, glm::vec2(50, 50), glm::vec2(50, 50), glm::u8vec4(0xff, 0xff, 0xff, 0xff));
 
 		// DrawText.draw_text calls glDrawArrays
 		// quicksilverText.draw_text(
@@ -430,13 +456,32 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 		// 	glm::u8vec4(0x24, 0x24, 0x24, 0xff),
 		// 	glm::vec2(50, 50)
 		// );
+		
+		// use alpha blending:
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		// don't use the depth test:
+		glDisable(GL_DEPTH_TEST);
 
-		std::vector <Vertex> vertices;
-		draw_rectangle(vertices, glm::vec2(50, 50), glm::vec2(50, 50), glm::u8vec4(0x22, 0x33, 0x44, 0xff));
-
+		// upload vertices to font_vertex_buffer:
 		glBindBuffer(GL_ARRAY_BUFFER, font_vertex_buffer); // set font_vertex_buffer as current
 		glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(vertices[0]), vertices.data(), GL_DYNAMIC_DRAW); // upload vertices array
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+		// set font_program as current program:
+		glUseProgram(font_program.program);
+
+		// upload OBJECT_TO_CLIP to the proper uniform location:
+		glm::mat4 identity(
+			glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
+			glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
+			glm::vec4(0.0f, 0.0f, 1.0f, 0.0f),
+			glm::vec4(0.0f, 0.0f, 0.0f, 1.0f)
+		);
+		glUniformMatrix4fv(font_program.OBJECT_TO_CLIP_mat4, 1, GL_FALSE, glm::value_ptr(identity));
+
+		// use the mapping font_vertex_attributes to fetch vertex data:
+		glBindVertexArray(font_vertex_attributes);
 
 		// bind the solid white texture to location zero so things will be drawn just with their colors:
 		// if you want to use more than 1 testure, use glUniform1i
