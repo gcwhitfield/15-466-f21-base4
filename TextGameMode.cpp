@@ -156,16 +156,16 @@ TextGameMode::TextGameMode() {
 
 		// disable alignment since what we read from the face (font) is grey-scale. 
 		// this line was copied from https://github.com/ChunanGang/TextBasedGame/blob/main/TextRenderer.cpp
-    	glPixelStorei(GL_UNPACK_ALIGNMENT, 1); 
+		glPixelStorei(GL_UNPACK_ALIGNMENT, 1); 
 
 		FT_Set_Pixel_Sizes(face, 0, 48);
 
 		// 2) characters with FreeType
 		char LETTER_MIN = 32;
-        char LETTER_MAX = 127;
-        for (char c = LETTER_MIN; c < LETTER_MAX; c++)
-        {
-			if (FT_Load_Char(face, 'X', FT_LOAD_RENDER)) // if I change 'X' to c, the program segfaults
+		char LETTER_MAX = 127;
+		for (char c = LETTER_MIN; c < LETTER_MAX; c++)
+		{
+			if (FT_Load_Char(face, 'X', FT_LOAD_RENDER)) // IF I CHANGE 'X' TO c, THE PROGRAM SEGFAULTS
 			{
 				std::cout << "ERROR::FREETYPE: Failed to load Glyph" << std::endl;
 				exit(0);
@@ -206,7 +206,7 @@ TextGameMode::TextGameMode() {
 			Character newChar = {
 				newTex,
 				glm::ivec2(face->glyph->bitmap.width, face->glyph->bitmap.rows), // line copied from https://github.com/ChunanGang/TextBasedGame/blob/main/TextRenderer.cpp
-            	glm::ivec2(face->glyph->bitmap_left, face->glyph->bitmap_top), // line copied from https://github.com/ChunanGang/TextBasedGame/blob/main/TextRenderer.cpp
+				glm::ivec2(face->glyph->bitmap_left, face->glyph->bitmap_top), // line copied from https://github.com/ChunanGang/TextBasedGame/blob/main/TextRenderer.cpp
 			};
 			characters.insert(std::pair<char, Character>(c, newChar));
 	
