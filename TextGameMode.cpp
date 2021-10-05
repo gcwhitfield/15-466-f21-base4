@@ -1,4 +1,4 @@
-#include "MemoryGameMode.hpp"
+#include "TextGameMode.hpp"
 
 //for the GL_ERRORS() macro:
 #include "gl_errors.hpp"
@@ -8,28 +8,7 @@
 
 #include <random>
 
-#include <ft2build.h>
-#include FT_FREETYPE_H
-
-#include <hb.h>
-#include <hb-ft.h>
-// The MemoryGameMode operates like a Finite State Machine (FSM). The game has 
-// different states and the MemoryGameMode decides what to do based on curr_state.
-// The states are:
-//     INIT - displays the blue plus sign
-//     PATTERN_DELIVERY - shows the player a pattern to memorize
-//     PATTERN_RECALL - shows nothing, the player must correctly recall pattern
-//     FINISH - final state for 'you win' screen. At the moment, the game never
-//            enters into this state and instead the pattern gets harder forever
-//
-// Notice how the handle_input, update, and draw functions all case on curr_state.
-// If the player presses the spacebar in the INIT state, then the game will 
-// transition to the first PATTERN_DELIVERY state with difficulty = 1. After 
-// the pattern is shown in the PATTERN_DELIVERY state, the game automatically
-// transitions into PATTERN_RECALL. From PATTERN_RECALL, the game will 
-// always transition back into PATTERN_DELIVERY, with the caveat that if the player
-// makes a mistake in the recall then the difficulty gets reset back to 1.
-MemoryGameMode::MemoryGameMode() {
+TextGameMode::TextGameMode() {
 	
 	{ // set up the game mode
 		_START_CALLED = false;
@@ -37,7 +16,6 @@ MemoryGameMode::MemoryGameMode() {
 
 	// ----- set up game state -----
 	difficulty = 1;
-	pattern =  MemoryPattern(difficulty);
 	curr_state = INIT;
 	next_state = INIT;
 	
@@ -59,7 +37,7 @@ MemoryGameMode::MemoryGameMode() {
 		// set vertex_buffer as the source of glVertexAttribPointer() commands:
 		glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
 
-		// set up the vertex array object to describe arrays of MemoryGameMode::Vertex:
+		// set up the vertex array object to describe arrays of TextGameMode::Vertex:
 		glVertexAttribPointer(
 			color_texture_program.Position_vec4, // attribute
 			3, // size
@@ -100,7 +78,7 @@ MemoryGameMode::MemoryGameMode() {
 		GL_ERRORS(); // PARANOIA: print out any OpenGL errors that may have happened
 	}
 
-	{ // make a texture from FreeType
+	{ // make map of glyph textures using FreeType
 
 		// 1) Load font with Freetype
 		// copied from https://github.com/harfbuzz/harfbuzz-tutorial/blob/master/hello-harfbuzz-freetype.c
@@ -111,8 +89,7 @@ MemoryGameMode::MemoryGameMode() {
 			exit(0);
 		}
 
-		const char* fontFile = &"fonts/quicksilver_3/Quicksilver.ttf"[0];
-		FT_Face face;
+		const char* fontFile = textFontFile.c_str();
 		if (FT_New_Face(ft, fontFile, 0, &face))
 		{
 			std::cout << "ERROR::FREETYPE: Failed to load font" << std::endl;
@@ -125,56 +102,21 @@ MemoryGameMode::MemoryGameMode() {
 
 		FT_Set_Pixel_Sizes(face, 0, 48);
 
-		const char* text = &"Hello!"[0];
+		// 2) characters with FreeType
+		char LETTER_MIN = 32;
+        char LETTER_MAX = 127;
+        for (char c = LETTER_MIN; c < LETTER_MAX; c++)
+        {
+			if (FT_Load_Char(face, 'X', FT_LOAD_RENDER))
+			{
+				std::cout << "ERROR::FREETYPE: Failed to load Glyph" << std::endl;
+				exit(0);
+			}
 
-		// Create hb-ft font
-		hb_font_t *hb_font;
-		hb_font = hb_ft_font_create(face, NULL);
-		
-		// Create hb_buffer and populate
-		hb_buffer_t *hb_buffer;
-		hb_buffer = hb_buffer_create();
-		hb_buffer_add_utf8(hb_buffer, text, -1, 0, -1 );
-		hb_buffer_guess_segment_properties(hb_buffer);
-		
-		// shape it!
-		hb_shape(hb_font, hb_buffer, NULL, 0);
-
-		// get glyph information and positions out of the buffer
-		unsigned int len = hb_buffer_get_length(hb_buffer);
-		hb_glyph_info_t *info = hb_buffer_get_glyph_infos(hb_buffer, NULL);
-		hb_glyph_position_t *pos = hb_buffer_get_glyph_positions(hb_buffer, NULL);
-
-		// print out the contents as is
-		for (size_t i = 0; i < len; i++)
-		{
-			hb_codepoint_t gid = info[i].codepoint;
-			unsigned int cluster = info[i].cluster;
-			double x_advance = pos[i].x_advance / 64.;
-			double y_advance = pos[i].y_advance / 64.;
-			double x_offset = pos[i].x_offset / 64.;
-			double y_offset = pos[i].y_offset / 64.;
-
-			char glyphname[32];
-			hb_font_get_glyph_name (hb_font, gid, glyphname, sizeof(glyphname));
-
-			printf("glyph='%s' cluster=%d advance=(%g,%g) offset=(%g,%g)\n",
-			glyphname, cluster, x_advance, y_advance, x_offset, y_offset);
-		}
-
-		// 2) load character with FreeType
-		// Font::Character c;
-		if (FT_Load_Char(face, 'X', FT_LOAD_RENDER))
-		{
-			std::cout << "ERROR::FREETYPE: Failed to load Glyph" << std::endl;
-			exit(0);
-		}
-
-		// 3) Create a texture from glyph (should be 'X')
-		// GLuint white_tex;
-		
-			glGenTextures(1, &white_tex);
-			glBindTexture(GL_TEXTURE_2D, white_tex);
+			// 3) Create a texture from glyph (should be 'X')
+			GLuint newTex = 0;
+			glGenTextures(1, &newTex);
+			glBindTexture(GL_TEXTURE_2D, newTex);
 			glm::uvec2 size = glm::uvec2(face->glyph->bitmap.rows,face->glyph->bitmap.width);
 			std::vector< glm::u8vec4 > data(size.x*size.y, glm::u8vec4(0xff, 0xff, 0xff, 0xff));
 			for (size_t i = 0; i < size.y; i++)
@@ -200,84 +142,128 @@ MemoryGameMode::MemoryGameMode() {
 				0, 
 				GL_RGBA,
 				GL_UNSIGNED_BYTE,
-				//face->glyph->bitmap.buffer
 				data.data()
 			);
 
-		// 	{
-		// 		FT_Bitmap const &bitmap = face->glyph->bitmap;
+			Character newChar = {
+				newTex,
+				glm::ivec2(face->glyph->bitmap.width, face->glyph->bitmap.rows), // line copied from https://github.com/ChunanGang/TextBasedGame/blob/main/TextRenderer.cpp
+            	glm::ivec2(face->glyph->bitmap_left, face->glyph->bitmap_top), // line copied from https://github.com/ChunanGang/TextBasedGame/blob/main/TextRenderer.cpp
+			};
+			characters.insert(std::pair<char, Character>(c, newChar));
+			// 	{
+			// 		FT_Bitmap const &bitmap = face->glyph->bitmap;
 
-		// 		std::cout << "Bitmap (" << bitmap.width << "x" << bitmap.rows << "):\n";
-		// 		std::cout << "  pitch is " << bitmap.pitch << "\n";
-		// 		std::cout << "  pixel_mode is " << int32_t(bitmap.pixel_mode) << "; num_grays is " << bitmap.num_grays << "\n";
-		// 		if (bitmap.pixel_mode == FT_PIXEL_MODE_GRAY && bitmap.num_grays == 256 && bitmap.pitch >= 0) {
-		// 			for (uint32_t row = 0; row < bitmap.rows; ++row) {
-		// 				std::cout << "   ";
-		// 				for (uint32_t col = 0; col < bitmap.width; ++col) {
-		// 					uint8_t val = bitmap.buffer[row * std::abs(bitmap.pitch) + col];
-		// 					if (val < 128) std::cout << '.';
-		// 					else std::cout << '#';
-		// 				}
-		// 				std::cout << '\n';
-		// 			}
-		// 		} else {
-		// 			std::cout << "  (bitmap is not FT_PIXEL_MODE_GRAY with 256 levels and upper-left origin, not dumping)" << "\n";
-		// 		}
-		// 		std::cout.flush();
-		// 	}
+			// 		std::cout << "Bitmap (" << bitmap.width << "x" << bitmap.rows << "):\n";
+			// 		std::cout << "  pitch is " << bitmap.pitch << "\n";
+			// 		std::cout << "  pixel_mode is " << int32_t(bitmap.pixel_mode) << "; num_grays is " << bitmap.num_grays << "\n";
+			// 		if (bitmap.pixel_mode == FT_PIXEL_MODE_GRAY && bitmap.num_grays == 256 && bitmap.pitch >= 0) {
+			// 			for (uint32_t row = 0; row < bitmap.rows; ++row) {
+			// 				std::cout << "   ";
+			// 				for (uint32_t col = 0; col < bitmap.width; ++col) {
+			// 					uint8_t val = bitmap.buffer[row * std::abs(bitmap.pitch) + col];
+			// 					if (val < 128) std::cout << '.';
+			// 					else std::cout << '#';
+			// 				}
+			// 				std::cout << '\n';
+			// 			}
+			// 		} else {
+			// 			std::cout << "  (bitmap is not FT_PIXEL_MODE_GRAY with 256 levels and upper-left origin, not dumping)" << "\n";
+			// 		}
+			// 		std::cout.flush();
+			// 	}
 
-		// 	// glBindTexture(GL_TEXTURE_2D, 0);
-		
+			// 	// glBindTexture(GL_TEXTURE_2D, 0);
+			
 
-		// // ask OpenGL to fill white_tex with the name of an unused texture object:
-		// glGenTextures(1, &white_tex);
+			// // ask OpenGL to fill white_tex with the name of an unused texture object:
+			// glGenTextures(1, &white_tex);
 
-		// // // bind that texture object as a GL_TEXTURE_2D-type texture:
-		// glBindTexture(GL_TEXTURE_2D, white_tex);
+			// // // bind that texture object as a GL_TEXTURE_2D-type texture:
+			// glBindTexture(GL_TEXTURE_2D, white_tex);
 
-		// // upload a 1x1 image of solid white to the texture:
-		// glm::uvec2 size = glm::uvec2(face->glyph->bitmap.rows, face->glyph->bitmap.width);
-		// // glm::u8vec4 start_color(0x00, 0x00, 0x00, 0x00);
-		// // glm::u8vec4 end_color(0xff, 0xff, 0xff, 0xff);
-		// std::vector< glm::u8vec4 > data(size.x*size.y, glm::u8vec4(0xff, 0xff, 0xff, 0xff));
-		// for (int i = 0; i < size.y; i++)
-		// {
-		// 	for (int j = 0; j < size.x; j++)
-		// 	{
-		// 		int index = i * size.y + j;
-		// 		// float t =  sqrt(pow((i / (float)size.y), 2) + pow((j / (float)size.x), 2)) / sqrt(2);
-		// 		// data[index].x = start_color.x * t + end_color.x * (t - (float)1); 
-		// 		// data[index].y = start_color.y * t + end_color.y * (t - (float)1); 
-		// 		// data[index].z = start_color.z * t + end_color.z * (t - (float)1); 
-		// 		// data[index].w = start_color.w * t + end_color.w * (t - (float)1); 
-		// 		uint8_t val = face->glyph->bitmap.buffer[j * std::abs(face->glyph->bitmap.pitch) + i]; // copied from professor mccan's example code for printing bitmap buffer
-		// 		data[index].x =val; 
-		// 		data[index].y =val; 
-		// 		data[index].z =val; 
-		// 		data[index].w =val; 
-		// 	}
-		// }
-		// glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, size.x, size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, data.data());
+			// // upload a 1x1 image of solid white to the texture:
+			// glm::uvec2 size = glm::uvec2(face->glyph->bitmap.rows, face->glyph->bitmap.width);
+			// // glm::u8vec4 start_color(0x00, 0x00, 0x00, 0x00);
+			// // glm::u8vec4 end_color(0xff, 0xff, 0xff, 0xff);
+			// std::vector< glm::u8vec4 > data(size.x*size.y, glm::u8vec4(0xff, 0xff, 0xff, 0xff));
+			// for (int i = 0; i < size.y; i++)
+			// {
+			// 	for (int j = 0; j < size.x; j++)
+			// 	{
+			// 		int index = i * size.y + j;
+			// 		// float t =  sqrt(pow((i / (float)size.y), 2) + pow((j / (float)size.x), 2)) / sqrt(2);
+			// 		// data[index].x = start_color.x * t + end_color.x * (t - (float)1); 
+			// 		// data[index].y = start_color.y * t + end_color.y * (t - (float)1); 
+			// 		// data[index].z = start_color.z * t + end_color.z * (t - (float)1); 
+			// 		// data[index].w = start_color.w * t + end_color.w * (t - (float)1); 
+			// 		uint8_t val = face->glyph->bitmap.buffer[j * std::abs(face->glyph->bitmap.pitch) + i]; // copied from professor mccan's example code for printing bitmap buffer
+			// 		data[index].x =val; 
+			// 		data[index].y =val; 
+			// 		data[index].z =val; 
+			// 		data[index].w =val; 
+			// 	}
+			// }
+			// glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, size.x, size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, data.data());
 
-		// set filtering and wrapping parameters:
-		// (it's a bit silly to mipmap a 1x1 texture, but I'm doing it because you may want to use this code to load different sizes of texture)
-		// parameters copied form https://github.com/ChunanGang/TextBasedGame/blob/main/TextRenderer.cpp
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			// since texture uses a mipmap and we haven't uploaded one, instruct opengl to make one for us:
+			glGenerateMipmap(GL_TEXTURE_2D);
+			// set filtering and wrapping parameters:
+			// (it's a bit silly to mipmap a 1x1 texture, but I'm doing it because you may want to use this code to load different sizes of texture)
+			// parameters copied form https://github.com/ChunanGang/TextBasedGame/blob/main/TextRenderer.cpp
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-		// since texture uses a mipmap and we haven't uploaded one, instruct opengl to make one for us:
-		glGenerateMipmap(GL_TEXTURE_2D);
 
-		// Okay, texture uploaded, can unbind it:
-		glBindTexture(GL_TEXTURE_2D, 0);
+			// Okay, texture uploaded, can unbind it:
+			glBindTexture(GL_TEXTURE_2D, 0);
+		}
 
 		GL_ERRORS(); // PARANOIA: print out any OpenGL errors that may have happened
 	}
+
+	{ // use Harfbuzz to shape text
+		const char* text = &"Hello!"[0];
+
+		// Create hb-ft font
+		hb_font = hb_ft_font_create(face, NULL);
+		
+		// Create hb_buffer and populate
+		hb_buffer = hb_buffer_create();
+		hb_buffer_add_utf8(hb_buffer, text, -1, 0, -1 );
+		hb_buffer_guess_segment_properties(hb_buffer);
+		
+		// shape it!
+		hb_shape(hb_font, hb_buffer, NULL, 0);
+
+		// get glyph information and positions out of the buffer
+		unsigned int len = hb_buffer_get_length(hb_buffer);
+		info = hb_buffer_get_glyph_infos(hb_buffer, NULL);
+		pos = hb_buffer_get_glyph_positions(hb_buffer, NULL);
+
+		// print out the contents as is
+		for (size_t i = 0; i < len; i++)
+		{
+			hb_codepoint_t gid = info[i].codepoint;
+			unsigned int cluster = info[i].cluster;
+			double x_advance = pos[i].x_advance / 64.;
+			double y_advance = pos[i].y_advance / 64.;
+			double x_offset = pos[i].x_offset / 64.;
+			double y_offset = pos[i].y_offset / 64.;
+
+			char glyphname[32];
+			hb_font_get_glyph_name (hb_font, gid, glyphname, sizeof(glyphname));
+
+			printf("glyph='%s' cluster=%d advance=(%g,%g) offset=(%g,%g)\n",
+			glyphname, cluster, x_advance, y_advance, x_offset, y_offset);
+		}
+
+	}
 }
 
-MemoryGameMode::~MemoryGameMode() {
+TextGameMode::~TextGameMode() {
 
 	// ----- free OpenGL resources -----
 	glDeleteBuffers(1, &vertex_buffer);
@@ -291,79 +277,20 @@ MemoryGameMode::~MemoryGameMode() {
 
 }
 
-bool MemoryGameMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size) {
+bool TextGameMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size) {
 	// handle different types of input for each of the different states
-	switch (curr_state)
-	{
-		case INIT:
-			if (evt.key.keysym.sym == SDLK_SPACE)
-			{
-				pattern.begin_drawing();
-				next_state = PATTERN_DELIVERY;
-			}
-			break;
-		case PATTERN_DELIVERY:
-			break;
-		case PATTERN_RECALL:
-			{
-				auto check_input = [this](MemoryPattern::Direction given_dir)
-				{
-					MemoryPattern::Direction correct_dir = pattern.pattern[recall_tile_index];
-					if (correct_dir != given_dir)
-					{
-						difficulty = 1;
-						pattern = MemoryPattern(difficulty);
-						pattern.begin_drawing();
-						next_state = PATTERN_DELIVERY;
-					} else {
-						if (recall_tile_index >= pattern.pattern.size() - 1)
-						{ // correct input, transition to next stage 
-							next_state = PATTERN_DELIVERY;
-							difficulty ++;
-							pattern = MemoryPattern(difficulty);
-							pattern.begin_drawing();
-						} else {
-							recall_tile_index ++;
-						}
-					}
-					
-					
-					return;
-				};
-				if (evt.key.type == SDL_KEYDOWN)
-				{
-					if (evt.key.keysym.sym == SDLK_UP || evt.key.keysym.sym == SDLK_w)
-					{
-						check_input(MemoryPattern::UP);
-					} else if (evt.key.keysym.sym == SDLK_DOWN || evt.key.keysym.sym == SDLK_s)
-					{
-						check_input(MemoryPattern::DOWN);
-					} else if (evt.key.keysym.sym == SDLK_LEFT || evt.key.keysym.sym == SDLK_a)
-					{
-						check_input(MemoryPattern::LEFT);
-					} else if (evt.key.keysym.sym == SDLK_RIGHT || evt.key.keysym.sym == SDLK_d)
-					{
-						check_input(MemoryPattern::RIGHT);
-					}
-				}
-			}
-			break;
-		case FINISH:
-			break;
-		case NONE:
-			break;
-	}
+	
 
 	return false;
 }
 
 // start is called right before the first call to update is executed
-void MemoryGameMode::start()
+void TextGameMode::start()
 {
 	curr_state = INIT;
 }
 
-void MemoryGameMode::update(float elapsed) {
+void TextGameMode::update(float elapsed) {
 
 	if (!_START_CALLED)
 	{
@@ -372,33 +299,11 @@ void MemoryGameMode::update(float elapsed) {
 	}
 
 	// ----- next state logic -----
-	switch (curr_state)
-	{
-		case INIT:
-			// INIT will transition into PATTERN_DELIVERY when the spacebar is 
-			// pressed
-			break;
-		case PATTERN_DELIVERY:
-			if (pattern.isDoneDrawing())
-			{
-				next_state = PATTERN_RECALL;
-				recall_tile_index = 0;
-			} else {
-				pattern.update(elapsed);
-			}
-			break;
-		case PATTERN_RECALL: // next state logic defined in handle_input	
-			break;
-		case FINISH:
-			break;
-		case NONE:
-			break;
-	}
 
 	curr_state = next_state;
 }
 
-void MemoryGameMode::draw(glm::uvec2 const &drawable_size) {
+void TextGameMode::draw(glm::uvec2 const &drawable_size) {
 
 	// verices must be cleared every time the screen is drawn. Otherwise, the 
 	// the previous frame will be drawn below the curretn frame, which causes 
@@ -508,7 +413,7 @@ void MemoryGameMode::draw(glm::uvec2 const &drawable_size) {
 	// bind the solid white texture to location zero so things will be drawn just with their colors:
 	// if you want to use more than 1 testure, use glUniform1i
 	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, white_tex);
+	glBindTexture(GL_TEXTURE_2D, characters['Q'].TextureID);
 
 	// run the OpenGL pipeline:
 	glDrawArrays(GL_TRIANGLES, 0, GLsizei(vertices.size()));
@@ -525,7 +430,7 @@ void MemoryGameMode::draw(glm::uvec2 const &drawable_size) {
 	GL_ERRORS(); // PARANOIA: print errors just in case we did something wrong.
 }
 
-void MemoryGameMode::draw_init()
+void TextGameMode::draw_init()
 {
 	// draw a blue plus-sign on the screen
 	// glm::u8vec4 blue = HEX_TO_U8VEC4(0x4cc9f0ff);
@@ -533,26 +438,20 @@ void MemoryGameMode::draw_init()
 	draw_rectangle(vertices, glm::vec2(0, 0), glm::vec2(court_radius.x / 2, court_radius.x / 16), fg_color);
 }
 
-void MemoryGameMode::draw_pattern_delivery()
+void TextGameMode::draw_pattern_delivery()
 {
-	pattern.draw(court_radius);
 
-	{ // Add vertex data from MemoryPattern
-		for (auto v = pattern.vertices.begin(); v < pattern.vertices.end(); v++)
-		{
-			vertices.emplace_back(*v);
-		}
-	}
+	
 }
 
-void MemoryGameMode::draw_pattern_recall()
+void TextGameMode::draw_pattern_recall()
 {
 	// for now, draw nothing on the screen
 
 	// TODO: add visual feedback for player input
 }
 
-void MemoryGameMode::draw_finish()
+void TextGameMode::draw_finish()
 {
 	// right now the game never enters the FINISH state so 
 	// this function never gets called.

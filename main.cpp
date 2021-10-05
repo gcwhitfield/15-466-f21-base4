@@ -10,7 +10,7 @@
 //For sound init:
 #include "Sound.hpp"
 
-#include "MemoryGameMode.hpp"
+#include "TextGameMode.hpp"
 
 //GL.hpp will include a non-namespace-polluting set of opengl prototypes:
 #include "GL.hpp"
@@ -114,7 +114,7 @@ int main(int argc, char **argv) {
 	call_load_functions();
 
 	//------------ create game mode + make current --------------
-	Mode::set_current(std::make_shared< PlayMode >());
+	Mode::set_current(std::make_shared< TextGameMode >());
 
 	//------------ main loop ------------
 

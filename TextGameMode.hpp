@@ -10,20 +10,27 @@
 
 #include <vector>
 #include <deque>
-#include "MemoryPattern.hpp"
+#include <map>
+#include <string>
 
 #ifndef DRAW_HELPER
 #define DRAW_HELPER
 #include "DrawHelper.h"
 #endif
 
+
+#include <ft2build.h>
+#include FT_FREETYPE_H
+
+#include <hb.h>
+#include <hb-ft.h>
 /*
- * MemoryGameMode is a game mode that implements a simple memory game.
+ * TextGameMode is a game mode that implements a simple text game.
  */
 
-struct MemoryGameMode : Mode {
-	MemoryGameMode();
-	virtual ~MemoryGameMode();
+struct TextGameMode : Mode {
+	TextGameMode();
+	virtual ~TextGameMode();
 
 	//functions called by main loop:
 	virtual bool handle_event(SDL_Event const &, glm::uvec2 const &window_size) override;
@@ -33,7 +40,6 @@ struct MemoryGameMode : Mode {
 
 	//----- game state -----
 	glm::vec2 court_radius = glm::vec2(7.0f, 5.0f);
-	MemoryPattern pattern;
 	int difficulty; // the number of tiles to memorize per pattern
 
 	// this variable is used in the PATTERN_RECALL state. It is the index into 
@@ -59,7 +65,7 @@ struct MemoryGameMode : Mode {
 	void draw_pattern_recall();
 	void draw_finish();
 
-	static_assert(sizeof(Vertex) == 4*3 + 1*4 + 4*2, "MemoryGameMode::Vertex should be packed");
+	static_assert(sizeof(Vertex) == 4*3 + 1*4 + 4*2, "TextGameMode::Vertex should be packed");
 
 	//vertices will be accumulated into this list and then uploaded+drawn at the end of the 'draw' function:
 	std::vector< Vertex > vertices;
@@ -84,4 +90,25 @@ struct MemoryGameMode : Mode {
 	// (stored here so that the mouse handling code can use it to position the paddle)
 
 	bool _START_CALLED; // set to true once start has been called
+
+	// ----- font rendering -----
+	std::string textFontFile = "fonts/quicksilver_3/Quicksilver.ttf";
+
+	// the Character struct and the characters map were inspired by the 
+	// OpenGL documentation about text rendering: 
+	// https://learnopengl.com/In-Practice/Text-Rendering
+	struct Character {
+		unsigned int TextureID;  // ID handle of the glyph texture
+		glm::ivec2   Size;       // Size of glyph
+		glm::ivec2   Bearing;    // Offset from baseline to left/top of glyph
+	};
+
+	std::map<char, Character> characters;
+
+	FT_Face face;
+	hb_buffer_t *hb_buffer;
+	hb_font_t *hb_font;
+	hb_glyph_position_t *pos;
+	hb_glyph_info_t *info;
+
 };
