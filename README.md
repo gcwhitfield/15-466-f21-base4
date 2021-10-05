@@ -1,6 +1,6 @@
-# (TODO: your game's title)
+# Tears of K'NOTHA
 
-Author: Tears of K'NOTHA
+Author: George Whitfield
 
 Design: The protagonist has just died in a tragic accident. Soon after arriving
 in NGOTH, the purgatory realm where souls are judged before going to Afterlife, 
