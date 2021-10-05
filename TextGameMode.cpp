@@ -220,7 +220,6 @@ TextGameMode::TextGameMode() {
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-			// Okay, texture uploaded, can unbind it:
 			glBindTexture(GL_TEXTURE_2D, 0);
 		}
 
@@ -390,6 +389,12 @@ void TextGameMode::draw(glm::uvec2 const &drawable_size) {
 			// unsigned int len = hb_buffer_get_length(hb_buffer);
 			info = hb_buffer_get_glyph_infos(hb_buffer, NULL);
 			pos = hb_buffer_get_glyph_positions(hb_buffer, NULL);
+
+			// why does info != NULL fail? Why is hb_buffer_get_glyph_positions
+			// setting info and pos to NULL? This is what causes the segfault on
+			// line 451. If I uncomment these assertions, they will fail
+			// assert(info != NULL);
+			// assert(pos != NULL);
 		}
 
 		glEnable(GL_BLEND);
@@ -442,7 +447,8 @@ void TextGameMode::draw(glm::uvec2 const &drawable_size) {
 
 				glm::vec2 scale(50, 50);
 				(void)scale;
-				// draw_rectangle(font_vertices, glm::ivec2(50 + x + x_offset, 50 + y + y_offset), scale, glm::u8vec4(0x33, 0x33, 0x33, 0xff)); // IF I UNCOMMENT THIS LINE, THE PROGRAM SEGFAULTS
+				// IF I UNCOMMENT THE NEXT LINE, THE PROGRAM SEGFAULTS
+				// draw_rectangle(font_vertices, glm::ivec2(50 + x + x_offset, 50 + y + y_offset), scale, glm::u8vec4(0x33, 0x33, 0x33, 0xff)); 
 				
 				// // render glyph texture over quad
 				// glBindTexture(GL_TEXTURE_2D, ch.TextureID); // IF I UNCOMMENT THIS LINE, THE PROGRAM SEGFAULTS
