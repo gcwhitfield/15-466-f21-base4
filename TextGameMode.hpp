@@ -61,9 +61,6 @@ struct TextGameMode : Mode {
 
 	// ----- draw -----
 	void draw_init();
-	void draw_pattern_delivery();
-	void draw_pattern_recall();
-	void draw_finish();
 
 	static_assert(sizeof(Vertex) == 4*3 + 1*4 + 4*2, "TextGameMode::Vertex should be packed");
 
@@ -110,5 +107,12 @@ struct TextGameMode : Mode {
 	hb_font_t *hb_font;
 	hb_glyph_position_t *pos;
 	hb_glyph_info_t *info;
+
+	std::string text_to_display;
+	std::string new_text_to_display;
+
+	ColorTextureProgram font_program;
+	GLuint font_vertex_attributes;
+	GLuint font_vertex_buffer;
 
 };
